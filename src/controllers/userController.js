@@ -120,20 +120,20 @@ const userController = {
 
   signIn: async (req, res) => {
     const { mongo } = req.context || {};
-
+    const { name, password } = req.body;
     let userLogin = await mongo.User.findOne({
-      name: req.body.name,
+      name: name,
     });
     if (!userLogin) {
-      return res.json({ message: "Wrong username" }).status(422);
+      return res.json({ message: "User not found" }).status(422);
     }
-    const validPass = bcrypt.compareSync(req.body.password, userLogin.password);
+    const validPass = bcrypt.compareSync(password, userLogin.password);
     if (!validPass) {
       return res.json({ message: "Wrong password" }).status(400);
     }
     if (userLogin) {
       // const userInfo= userLogin.toArray();
-      return res.json({ message: "Login success" }).status(200);
+      return res.json({ message: "Login Success", userLogin }).status(200);
     }
   },
 };

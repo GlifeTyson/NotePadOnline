@@ -1,9 +1,15 @@
 const express = require("express");
 const connectDb = require("./database");
+const cors = require("cors");
+
 const userRoute = require("./routes/userRoute");
 var bodyParser = require("body-parser");
 const diaryRoute = require("./routes/diaryRoute");
-
+const corsOptions = {
+  origin: "*",
+  credentials: true, //access-control-allow-credentials:true
+  optionSuccessStatus: 200,
+};
 async function run() {
   try {
     const { client, db, mongo } = await connectDb();
@@ -19,6 +25,7 @@ async function run() {
       next();
     });
 
+    app.use(cors(corsOptions));
     app.use(bodyParser.json()); // for parsing application/json
     app.use(bodyParser.urlencoded({ extended: true }));
     app.use(userRoute);
