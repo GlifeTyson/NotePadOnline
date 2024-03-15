@@ -1,7 +1,7 @@
 const connectDb = require("../database");
 const userValidator = require("../validator/userValidator");
 const hashPassword = require("../utils/index");
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcrypt");
 const userController = {
   list: async (req, res) => {
     try {
@@ -41,19 +41,19 @@ const userController = {
     const { error, value } = userValidator.validate(req.body);
     // console.log(value);
     if (error) {
-      return res.json({message:"Fail at validation"}).status(400);
+      return res.json({ message: "Fail at validation" }).status(400);
     }
     let nameCheck = await mongo.User.findOne({
       name: req.body.name,
     });
-    if(nameCheck){
-      return res.json({message:"Username have been registed"}).status(400);
+    if (nameCheck) {
+      return res.json({ message: "Username have been registed" }).status(400);
     }
     let emailCheck = await mongo.User.findOne({
-      email:req.body.email
-    })
-    if(emailCheck){
-      return res.json({message:"Email have been registed"}).status(400);
+      email: req.body.email,
+    });
+    if (emailCheck) {
+      return res.json({ message: "Email have been registed" }).status(400);
     }
     if (value) {
       // res.send("Good at validation").status(200);
@@ -63,11 +63,30 @@ const userController = {
         password: hashPassword(password),
         createdAt: Date.now(),
       });
-      res.json({message:"Create New User Successfully"}).status(200);
+      res.json({ message: "Create New User Successfully" }).status(200);
     }
   },
   update: async (req, res) => {
-    res.json([]).status(200);
+    try {
+      const { mongo } = req.context || {};
+      const { name, password, cPassword } = req.body;
+      const findUser = await mongo.User.findOne({ name: req.body.name });
+      if (!findUser) {
+        return res.json({ message: "User not found" }).status(400);
+      }
+      if (password != cPassword) {
+        return res.json({ message: "Password not match" }).status(422);
+      }
+      await mongo.User.updateOne(
+        { name: name },
+        {
+          $set: { password: hashPassword(password), updatedAt: Date.now() },
+        }
+      );
+      return res.json({ message: "success" }).status(200);
+    } catch (error) {
+      res.json({ message: error.message }).status(400);
+    }
   },
   delete: async (req, res) => {
     res.json([]).status(200);
@@ -75,20 +94,20 @@ const userController = {
 
   signIn: async (req, res) => {
     const { mongo } = req.context || {};
-    
+
     let userLogin = await mongo.User.findOne({
       name: req.body.name,
     });
     if (!userLogin) {
       return res.json("Wrong username").status(422);
     }
-    const validPass = bcrypt.compareSync(req.body.password,userLogin.password);
-    if(!validPass){
-      return res.json({message:'Wrong password'}).status(400);
+    const validPass = bcrypt.compareSync(req.body.password, userLogin.password);
+    if (!validPass) {
+      return res.json({ message: "Wrong password" }).status(400);
     }
-    if(userLogin){
-        // const userInfo= userLogin.toArray();
-      return res.json({message:'Login success'}).status(200);
+    if (userLogin) {
+      // const userInfo= userLogin.toArray();
+      return res.json({ message: "Login success" }).status(200);
     }
   },
 };
