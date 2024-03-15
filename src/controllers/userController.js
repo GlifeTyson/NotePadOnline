@@ -89,7 +89,33 @@ const userController = {
     }
   },
   delete: async (req, res) => {
-    res.json([]).status(200);
+    try {
+      const { mongo } = req.context || {};
+      const { id } = req.params;
+      //parse id bc find query _id need ObjectID type to compare not String
+      const parseId = new mongodb.ObjectId(id);
+      const userFound = mongo.User.find({ _id: parseId });
+      const user = await userFound.toArray();
+      if (user.length == 0) {
+        res
+          .json({
+            message: "Not found to delete",
+          })
+          .status(422);
+      }
+
+      await mongo.User.updateOne(
+        { _id: parseId },
+        {
+          $set: { deleteAt: Date.now() },
+        }
+      );
+      //   //   await mongo.Diary.findOneAndDelete({ _id: parseId });
+      res.json({ message: "Soft Deleted successfully" }).status(200);
+    } catch (error) {
+      return res.json({ message: error.message }).status(422);
+      // res.json([]).status(200);
+    }
   },
 
   signIn: async (req, res) => {
@@ -99,7 +125,7 @@ const userController = {
       name: req.body.name,
     });
     if (!userLogin) {
-      return res.json("Wrong username").status(422);
+      return res.json({ message: "Wrong username" }).status(422);
     }
     const validPass = bcrypt.compareSync(req.body.password, userLogin.password);
     if (!validPass) {
