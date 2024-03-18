@@ -121,29 +121,65 @@ const diaryController = {
       return res.json({ message: error.message }).status(422);
     }
   },
-  //patch /api/diaries
+  //patch /api/diaries/addViewer
   addViewer: async (req, res) => {
     try {
       const { mongo } = req.context || {};
-      const { viewer, id } = req.body;
-      const parseId = new mongodb.ObjectId(id);
-      const diaryFound = await mongo.Diary.findOne({ _id: parseId });
+      const { viewer, idDiary } = req.body;
+      const parseId = new mongodb.ObjectId(idDiary);
+      const parseViewer = new mongodb.ObjectId(viewer);
+      const userFound = await mongo.User.findOne({ _id: parseViewer });
+      if (!userFound) {
+        return res
+          .json({ message: "Not found user to add to diary" })
+          .status(422);
+      }
+      const diaryFound = await mongo.Diary.findOneAndUpdate(
+        { _id: parseId },
+        {
+          $push: { viewers: [viewer] },
+          // $pop: { viewers: 1 },
+        }
+      );
       if (!diaryFound) {
         return res
           .json({ message: "Not found diary to add viewer" })
           .status(422);
-      } else {
-        try {
-          const diaryToAdd = await mongo.Diary.updateOne({
-            viewer: viewer,
-          });
-          return res.json({ message: "Add viewer success" }).status(200);
-        } catch (error) {
-          return res.json({ message: message.error }).status(422);
-        }
       }
+
+      res.json({ message: "Add viewer success", data: diaryFound }).status(200);
     } catch (error) {
-      return res.json({ message: message.error }).status(422);
+      return res.json({ message: error.message }).status(422);
+    }
+  },
+  //Delete /api/diaries/removeViewer
+  removeViewer: async (req, res) => {
+    try {
+      const { mongo } = req.context || {};
+      const { viewer, idDiary } = req.body;
+      const parseId = new mongodb.ObjectId(idDiary);
+      const parseViewer = new mongodb.ObjectId(viewer);
+      const userFound = await mongo.User.findOne({ _id: parseViewer });
+      if (!userFound) {
+        return res
+          .json({ message: "Not found user to delete from diary" })
+          .status(422);
+      }
+      const diaryFound = await mongo.Diary.findOneAndUpdate(
+        { _id: parseId },
+        {
+          //remove by using $pull viewer from viewers array
+          $pull: { viewers: viewer },
+        }
+      );
+      if (!diaryFound) {
+        return res
+          .json({ message: "Not found diary to delete viewer" })
+          .status(422);
+      }
+      res.json({ message: "Add viewer success", data: diaryFound }).status(200);
+    } catch (error) {
+      return res.json({ message: error.message }).status(422);
     }
   },
 };
