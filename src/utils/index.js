@@ -4,4 +4,11 @@ const hashPassword = (password) => {
   return bcrypt.hashSync(password, 12);
 };
 
-module.exports = hashPassword;
+const compareSync = (password, resPassword) => {
+  return bcrypt.compareSync(password, resPassword);
+};
+
+module.exports = {
+  hashPassword,
+  compareSync,
+};

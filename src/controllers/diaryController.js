@@ -2,10 +2,14 @@ const { date } = require("joi");
 const { ObjectId } = require("mongodb");
 const mongodb = require("mongodb");
 const diaryController = {
+  // GET /api/diaries
   list: async (req, res) => {
     try {
       const { mongo } = req.context || {};
-      const diaryCursor = mongo.Diary.find({});
+      const diaryCursor = mongo.Diary.find({ deleteAt: null });
+      diaryCursor.sort({ createdAt: -1 });
+      diaryCursor.skip(0);
+      diaryCursor.limit(10);
       const diaries = await diaryCursor.toArray();
       res.json(diaries).status(200);
     } catch (error) {
@@ -16,17 +20,19 @@ const diaryController = {
         .status(422);
     }
   },
+  // GET /api/diaries/:id
   view: async (req, res) => {
     try {
       const { mongo } = req.context || {};
       const { id } = req.params;
-      const diary = mongo.Diary.find({ creator: id });
-      const diaries = await diary.toArray();
-      return res.json(diaries).status(200);
+      const parseId = new mongodb.ObjectId(id);
+      const diary = mongo.Diary.findOne({ _id: parseId });
+      return res.json(diary).status(200);
     } catch (error) {
       return res.json({ message: error.message }).status(422);
     }
   },
+  // POST /api/diaries
   create: async (req, res) => {
     try {
       const { mongo } = req.context || {};
@@ -40,16 +46,17 @@ const diaryController = {
         title: title,
         content: content,
         creator: creator,
-        viewer: "",
+        viewers: [],
         createdAt: Date.now(),
-        deleteAt: "",
-        updateAt: "",
+        deleteAt: null,
+        updateAt: null,
       });
       return res.json({ message: "Created successfully" }).status(200);
     } catch (error) {
       return res.json({ message: error.message }).status(422);
     }
   },
+  // PATCH /api/diaries/:id
   update: async (req, res) => {
     try {
       const { mongo } = req.context || {};
@@ -62,9 +69,12 @@ const diaryController = {
       }
       //parse id bc find query _id need ObjectID type to compare not String
       const parseId = new mongodb.ObjectId(id);
-      const diariesFound = mongo.Diary.find({ _id: parseId });
-      const diary = await diariesFound.toArray();
-      if (diary.length == 0) {
+      const diariesFound = mongo.Diary.findOne({
+        _id: parseId,
+        deletedAt: null,
+      });
+      // const diary = await diariesFound.toArray();
+      if (!diariesFound) {
         return res
           .json({ message: "The diary not found to update" })
           .status(422);
@@ -81,18 +91,20 @@ const diaryController = {
       return res.json({ message: error.message }).status(422);
     }
   },
+  // DELETE /api/diaries/:id
   delete: async (req, res) => {
     try {
       const { mongo } = req.context || {};
       const { id } = req.params;
       //parse id bc find query _id need ObjectID type to compare not String
       const parseId = new mongodb.ObjectId(id);
-      const diariesFound = mongo.Diary.find({ _id: parseId });
-      const diary = await diariesFound.toArray();
-      if (diary.length == 0) {
-        res
+      const diariesFound = mongo.Diary.findOne({
+        _id: parseId,
+      });
+      if (!diariesFound) {
+        return res
           .json({
-            message: "Not found to delete",
+            message: "Not found to delete or deleted",
           })
           .status(422);
       }
@@ -104,9 +116,34 @@ const diaryController = {
         }
       );
       //   //   await mongo.Diary.findOneAndDelete({ _id: parseId });
-      res.json({ message: "Soft Deleted successfully" }).status(200);
+      return res.json({ message: "Soft Deleted successfully" }).status(200);
     } catch (error) {
       return res.json({ message: error.message }).status(422);
+    }
+  },
+  //patch /api/diaries
+  addViewer: async (req, res) => {
+    try {
+      const { mongo } = req.context || {};
+      const { viewer, id } = req.body;
+      const parseId = new mongodb.ObjectId(id);
+      const diaryFound = await mongo.Diary.findOne({ _id: parseId });
+      if (!diaryFound) {
+        return res
+          .json({ message: "Not found diary to add viewer" })
+          .status(422);
+      } else {
+        try {
+          const diaryToAdd = await mongo.Diary.updateOne({
+            viewer: viewer,
+          });
+          return res.json({ message: "Add viewer success" }).status(200);
+        } catch (error) {
+          return res.json({ message: message.error }).status(422);
+        }
+      }
+    } catch (error) {
+      return res.json({ message: message.error }).status(422);
     }
   },
 };

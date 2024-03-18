@@ -1,12 +1,17 @@
 const connectDb = require("../database");
 const userValidator = require("../validator/userValidator");
-const hashPassword = require("../utils/index");
+const { hashPassword, compareSync } = require("../utils/index");
 const bcrypt = require("bcrypt");
+const omit = require("lodash/omit");
+const { ObjectId } = require("mongodb");
+const jwt = require("jsonwebtoken");
+const { generateAccessToken, generateRefreshToken } = require("../utils/token");
+
 const userController = {
   list: async (req, res) => {
     try {
       const { mongo } = req.context || {};
-      const usersCursor = mongo.User.find({});
+      const usersCursor = mongo.User.find({ deleteAt: null });
 
       usersCursor.sort({ createdAt: -1 });
       usersCursor.skip(0);
@@ -38,32 +43,52 @@ const userController = {
   create: async (req, res) => {
     const { mongo } = req.context || {};
     const { name, email, password } = req.body;
-    const { error, value } = userValidator.validate(req.body);
+    const { error } = userValidator.validate(req.body);
     // console.log(value);
     if (error) {
       return res.json({ message: "Fail at validation" }).status(400);
     }
     let nameCheck = await mongo.User.findOne({
-      name: req.body.name,
+      name: name,
+      deletedAt: null,
     });
     if (nameCheck) {
       return res.json({ message: "Username have been registed" }).status(400);
     }
     let emailCheck = await mongo.User.findOne({
-      email: req.body.email,
+      email: email,
+      deletedAt: null,
     });
     if (emailCheck) {
       return res.json({ message: "Email have been registed" }).status(400);
     }
-    if (value) {
-      // res.send("Good at validation").status(200);
-      let newUser = await mongo.User.insertOne({
-        name: name,
-        email: email,
-        password: hashPassword(password),
-        createdAt: Date.now(),
-      });
-      res.json({ message: "Create New User Successfully" }).status(200);
+
+    // res.send("Good at validation").status(200);
+    const newUser = {
+      _id: new ObjectId(),
+      name: name,
+      email: email,
+      password: hashPassword(password),
+      createdAt: Date.now(),
+      active: true,
+    };
+
+    await mongo.User.insertOne(newUser);
+    if (newUser.active == false) {
+      // sendMail(transporter, mailOptions);
+      return res
+        .json({
+          message: "Go to Mail to active user",
+          data: omit(newUser, ["_id", "password"]),
+        })
+        .status(200);
+    } else {
+      return res
+        .json({
+          message: "Created success",
+          data: omit(newUser, ["_id", "password"]),
+        })
+        .status(200);
     }
   },
   update: async (req, res) => {
@@ -107,7 +132,7 @@ const userController = {
       await mongo.User.updateOne(
         { _id: parseId },
         {
-          $set: { deleteAt: Date.now() },
+          $set: { deletedAt: Date.now() },
         }
       );
       //   //   await mongo.Diary.findOneAndDelete({ _id: parseId });
@@ -120,21 +145,31 @@ const userController = {
 
   signIn: async (req, res) => {
     const { mongo } = req.context || {};
-    const { name, password } = req.body;
+    const { email, password } = req.body;
     let userLogin = await mongo.User.findOne({
-      name: name,
+      email: email,
+      deletedAt: null,
     });
     if (!userLogin) {
       return res.json({ message: "User not found" }).status(422);
     }
-    const validPass = bcrypt.compareSync(password, userLogin.password);
+    const validPass = compareSync(password, userLogin.password);
     if (!validPass) {
       return res.json({ message: "Wrong password" }).status(400);
     }
-    if (userLogin) {
-      // const userInfo= userLogin.toArray();
-      return res.json({ message: "Login Success", userLogin }).status(200);
-    }
+
+    return res
+      .json({
+        message: "Login Success",
+        // user: omit(userLogin, ["_id", "password"]),
+        data: {
+          accessToken: generateAccessToken(userLogin),
+          accessTokenExpireIn: "5m",
+          refreshToken: generateRefreshToken(userLogin),
+          refreshTokenExpireIn: "30m",
+        },
+      })
+      .status(200);
   },
 };
 
