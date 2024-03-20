@@ -8,7 +8,7 @@ const token = {
         id: user._id,
       },
       SECRET_KEY,
-      { expiresIn: "5m" }
+      { expiresIn: "1d" }
     );
   },
 
