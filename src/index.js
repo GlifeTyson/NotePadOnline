@@ -3,8 +3,9 @@ const connectDb = require("./database");
 const cors = require("cors");
 
 const userRoute = require("./routes/userRoute");
-var bodyParser = require("body-parser");
 const diaryRoute = require("./routes/diaryRoute");
+const commentRoute = require("./routes/commentRoute");
+var bodyParser = require("body-parser");
 const corsOptions = {
   origin: "*",
   credentials: true, //access-control-allow-credentials:true
@@ -30,6 +31,7 @@ async function run() {
     app.use(bodyParser.urlencoded({ extended: true }));
     app.use(userRoute);
     app.use(diaryRoute);
+    app.use(commentRoute);
 
     app.listen(3000, () => {
       console.log("Express Server running on http://localhost:3000");

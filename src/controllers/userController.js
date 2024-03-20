@@ -167,6 +167,8 @@ const userController = {
           accessTokenExpireIn: "5m",
           refreshToken: generateRefreshToken(userLogin),
           refreshTokenExpireIn: "30m",
+          email: userLogin.email,
+          _id: userLogin._id,
         },
       })
       .status(200);

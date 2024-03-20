@@ -3,8 +3,8 @@ const diaryController = require("../controllers/diaryController");
 
 const diaryRoute = Router();
 
-diaryRoute.get("/api/diaries", diaryController.list); //get all diaries
-diaryRoute.get("/api/diaries/:id", diaryController.view); //get diary by user
+diaryRoute.get("/api/diaries/:idUser", diaryController.list); //get all diaries by creator
+// diaryRoute.get("/api/diaries/:id", diaryController.view); //get diary by user
 diaryRoute.post("/api/diaries", diaryController.create); //create new diary(note)
 diaryRoute.patch("/api/diaries/addViewer", diaryController.addViewer); //add viewers to diary
 diaryRoute.patch("/api/diaries/:id", diaryController.update);

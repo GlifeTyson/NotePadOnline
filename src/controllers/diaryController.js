@@ -1,17 +1,33 @@
-const { date } = require("joi");
-const { ObjectId } = require("mongodb");
+// const { ObjectId } = require("mongodb");
 const mongodb = require("mongodb");
 const diaryController = {
-  // GET /api/diaries
+  // GET /api/diaries get diary by user login
   list: async (req, res) => {
     try {
       const { mongo } = req.context || {};
-      const diaryCursor = mongo.Diary.find({ deleteAt: null });
+      const { idUser } = req.params;
+      // return console.log(id);
+      const diaryCursor = mongo.Diary.find({
+        deletedAt: null,
+        creator: idUser,
+      });
       diaryCursor.sort({ createdAt: -1 });
       diaryCursor.skip(0);
       diaryCursor.limit(10);
       const diaries = await diaryCursor.toArray();
-      res.json(diaries).status(200);
+      return res.json(diaries).status(200);
+    } catch (error) {
+      res
+        .json({
+          message: error.message,
+        })
+        .status(422);
+    }
+  },
+
+  //GET /api/dairies/shared
+  shared: async (req, res) => {
+    try {
     } catch (error) {
       res
         .json({
@@ -26,8 +42,9 @@ const diaryController = {
       const { mongo } = req.context || {};
       const { id } = req.params;
       const parseId = new mongodb.ObjectId(id);
-      const diary = mongo.Diary.findOne({ _id: parseId });
-      return res.json(diary).status(200);
+      const diary = mongo.Diary.find({ _id: parseId });
+      const parseDiary = await diary.toArray();
+      return res.json(parseDiary).status(200);
     } catch (error) {
       return res.json({ message: error.message }).status(422);
     }
@@ -48,8 +65,9 @@ const diaryController = {
         creator: creator,
         viewers: [],
         createdAt: Date.now(),
-        deleteAt: null,
-        updateAt: null,
+        deletedAt: null,
+        updatedAt: null,
+        comments: null,
       });
       return res.json({ message: "Created successfully" }).status(200);
     } catch (error) {
@@ -83,7 +101,7 @@ const diaryController = {
       await mongo.Diary.updateOne(
         { _id: parseId },
         {
-          $set: { title: title, content: content, updateAt: Date.now() },
+          $set: { title: title, content: content, updatedAt: Date.now() },
         }
       );
       return res.json({ message: "Updated successfully" }).status(200);
@@ -112,7 +130,7 @@ const diaryController = {
       await mongo.Diary.updateOne(
         { _id: parseId },
         {
-          $set: { deleteAt: Date.now() },
+          $set: { deletedAt: Date.now() },
         }
       );
       //   //   await mongo.Diary.findOneAndDelete({ _id: parseId });
@@ -137,7 +155,7 @@ const diaryController = {
       const diaryFound = await mongo.Diary.findOneAndUpdate(
         { _id: parseId },
         {
-          $push: { viewers: [viewer] },
+          $push: { viewers: { _id: [viewer] } },
           // $pop: { viewers: 1 },
         }
       );
@@ -147,7 +165,7 @@ const diaryController = {
           .status(422);
       }
 
-      res.json({ message: "Add viewer success", data: diaryFound }).status(200);
+      res.json({ message: "Add viewer success" }).status(200);
     } catch (error) {
       return res.json({ message: error.message }).status(422);
     }
