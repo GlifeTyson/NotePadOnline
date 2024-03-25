@@ -164,9 +164,9 @@ const userController = {
         // user: omit(userLogin, ["_id", "password"]),
         data: {
           accessToken: generateAccessToken(userLogin),
-          accessTokenExpireIn: "5m",
-          refreshToken: generateRefreshToken(userLogin),
-          refreshTokenExpireIn: "30m",
+          accessTokenExpireIn: "1d",
+          // refreshToken: generateRefreshToken(userLogin),
+          // refreshTokenExpireIn: "30m",
           email: userLogin.email,
           _id: userLogin._id,
         },

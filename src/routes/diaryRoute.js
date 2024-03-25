@@ -4,8 +4,9 @@ const diaryController = require("../controllers/diaryController");
 const diaryRoute = Router();
 
 diaryRoute.get("/api/diaries", diaryController.list); //get all diaries by creator
-// diaryRoute.get("/api/diaries/:id", diaryController.view); //get diary by user
+//sap xep thu tu route neu kh se goi sai route
 diaryRoute.get("/api/diaries/shared", diaryController.shared); //get shared diaries
+diaryRoute.get("/api/diaries/:id", diaryController.view); //get diary by user
 diaryRoute.post("/api/diaries", diaryController.create); //create new diary(note)
 diaryRoute.patch("/api/diaries/:id/addViewer", diaryController.addViewer); //add viewers to diary
 diaryRoute.patch("/api/diaries/:id", diaryController.update);

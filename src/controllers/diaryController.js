@@ -51,9 +51,9 @@ const diaryController = {
       const { mongo } = req.context || {};
       const { id } = req.params;
       const parseId = new ObjectId(id);
-      const diary = mongo.Diary.find({ _id: parseId });
-      const parseDiary = await diary.toArray();
-      return res.json(parseDiary).status(200);
+      const diary = await mongo.Diary.findOne({ _id: parseId });
+      // const parseDiary = await diary.toArray();
+      return res.json(diary).status(200);
     } catch (error) {
       return res.json({ message: error.message }).status(422);
     }
