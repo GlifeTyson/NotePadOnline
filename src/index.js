@@ -80,7 +80,7 @@ async function run() {
     app.use(userRoute);
     //middleware require user need to login
     app.use(requiredLogin, diaryRoute);
-    app.use(commentRoute);
+    app.use(requiredLogin, commentRoute);
 
     app.listen(3000, () => {
       console.log("Express Server running on http://localhost:3000");

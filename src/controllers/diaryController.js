@@ -128,7 +128,7 @@ const diaryController = {
       const { id } = req.params;
       //parse id bc find query _id need ObjectID type to compare not String
       const parseId = new ObjectId(id);
-      const diariesFound = mongo.Diary.findOne({
+      const diariesFound = await mongo.Diary.findOne({
         _id: parseId,
       });
       if (!diariesFound) {
