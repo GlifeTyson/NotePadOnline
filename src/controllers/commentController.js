@@ -1,9 +1,64 @@
+const Joi = require("joi");
 const { ObjectId } = require("mongodb");
 
+const schema = Joi.object({
+  offset: Joi.number().min(0),
+  limit: Joi.number().positive(),
+  // orderBy: Joi.string().pattern(/^([a-zA-Z0-9].)_(ASC|DESC)$/),
+  orderBy: Joi.string().pattern(new RegExp("^[a-zA-Z0-9]+_(ASC|DESC)")),
+});
+
 const commentController = {
-  list: async (req, res) => {},
+  // GET /api/comments?offset=0&limit=20&orderBy=createdAt_DESC&filter={"diaryId":"66027325cfb5c042462d7d43"}
+  list: async (req, res) => {
+    try {
+      const { mongo } = req.context || {};
+      const { offset, limit, orderBy, filter } = req.query;
+      const filterObj = JSON.parse(filter || "{}");
+
+      //validate with joi
+      const { error } = schema.validate({
+        offset,
+        limit,
+        orderBy,
+      });
+      // console.log(error);
+      if (error) {
+        //
+        return res.json({ message: error });
+      }
+      //check if diaryId user put in is ObjectID ?
+      if (!ObjectId.isValid(filterObj.diaryId)) {
+        //
+        return console.log("filterObj.diaryId is not valid");
+      }
+      //find with filter
+      const diaryId = new ObjectId(filterObj.diaryId);
+      // const commentId = new ObjectId(filterObj.commentId);
+      const commentCursor = await mongo.Comment.find({
+        diaryId: diaryId,
+        // comments: commentId,
+        deletedAt: null,
+      });
+      const [field, direction] = orderBy.split("_");
+      commentCursor.sort({ [field]: direction === "DESC" ? -1 : 1 });
+      // { ["createdAt"]: -1 } -> { createdAt: -1 }
+      console.log(typeof offset);
+      commentCursor.skip(parseInt(offset));
+      commentCursor.limit(Math.min(limit, 1000));
+      const comments = await commentCursor.toArray();
+
+      res.json({ message: "Get Comments success", data: { comments } });
+    } catch (error) {
+      res
+        .json({
+          message: error.message,
+        })
+        .status(422);
+    }
+  },
   view: async (req, res) => {},
-  //GET /api/comments/:id (id Diary)
+  // GET /api/diaries/:id/comments (id Diary)
   listByDiary: async (req, res) => {
     try {
       const { mongo, user } = req.context || {};
@@ -37,43 +92,50 @@ const commentController = {
   },
 
   //POST /api/comments
+  /*
+    diaryId: string | required
+    content: string | required
+    commentId: string | optional
+  */
   create: async (req, res) => {
     try {
       const { mongo, user } = req.context || {};
-      const { content } = req.body;
-      const { id } = req.params;
-      if (content.length == 0) {
-        return res.json({ message: "Please fill in content" }).status(422);
+      const { content, diaryId, commentId } = req.body;
+      // const { id } = req.params;
+      const parseDiaryID = new ObjectId(diaryId);
+      if (content.length == 0 || diaryId.length == 0) {
+        return res
+          .json({ message: "Diary id or content cant be null" })
+          .status(422);
       }
+      //check diary exist thuoc trong list mynote / shared note
+
+      const diary = await mongo.Diary.findOne({
+        _id: parseDiaryID,
+      });
+      if (!diary) {
+        return res.json({ message: "Not found diary" }).status(422);
+      }
+      //check if having comment or not if not then send null to commentObject.commentId to know that the first comment
+      const comment = diaryId
+        ? await mongo.Comment.findOne({ _id: new ObjectId(commentId) })
+        : null;
+
       const commentOb = {
         _id: new ObjectId(),
         content: content,
         creator: user._id,
-        diaryId: new ObjectId(id),
-        reply_comments: [],
+        diaryId: diary._id,
+        commentId: comment ? comment._id : null,
         createdAt: Date.now(),
         deletedAt: null,
         updatedAt: null,
       };
+
       await mongo.Comment.insertOne(commentOb);
       const commentFound = await mongo.Comment.findOne({ _id: commentOb._id });
-      const diary = await mongo.Diary.updateOne(
-        {
-          _id: new ObjectId(id),
-        },
-        {
-          $push: {
-            comments: commentFound,
-          },
-          // $pop: { comments: 1 },
-        }
-      );
-      const diaryFound = await mongo.Diary.findOne({
-        _id: new ObjectId(id),
-      });
-
       return res
-        .json({ message: "Created successfully", data: diaryFound })
+        .json({ message: "Created successfully", data: commentFound })
         .status(200);
     } catch (error) {
       res
